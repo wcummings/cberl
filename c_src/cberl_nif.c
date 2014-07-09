@@ -42,9 +42,11 @@ NIF(cberl_nif_new)
 
     handle->thread_opts = enif_thread_opts_create("thread_opts");
 
+    #ifndef ERL_NIF_DIRTY_SCHEDULER_SUPPORT
     if (enif_thread_create("", &handle->thread, worker, handle, handle->thread_opts) != 0) {
         return enif_make_atom(env, "error");
     }
+    #endif
 
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_resource(env, handle));
 }
