@@ -72,25 +72,23 @@ init([{host, Host}, {username, Username}, {password, Password},
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_call({mtouch, Keys, ExpTimesE}, _From, 
-            State = #instance{handle = Handle}) ->
+handle_call({mtouch, Keys, ExpTimesE}, _From, State) ->
     case control(op(mtouch), [Keys, ExpTimesE], State) of
         Reply -> {reply, Reply, State}
     end;
-handle_call({unlock, Key, Cas}, _From, 
-            State = #instance{handle = Handle}) ->
+handle_call({unlock, Key, Cas}, _From, State) ->
     case control(op(unlock), [Key, Cas], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call({store, Op, Key, Value, TranscoderOpts, Exp, Cas}, _From, 
-            State = #instance{handle = Handle, transcoder = Transcoder}) ->
+            State = #instance{transcoder = Transcoder}) ->
     StoreValue = Transcoder:encode_value(TranscoderOpts, Value), 
     case control(op(store), [operation_value(Op), Key, StoreValue, 
                  Transcoder:flag(TranscoderOpts), Exp, Cas], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call({mget, Keys, Exp, Lock}, _From, 
-            State = #instance{handle = Handle, transcoder = Transcoder}) ->
+            State = #instance{transcoder = Transcoder}) ->
     Reply = case control(op(mget), [Keys, Exp, Lock], State) of
         {error, Error} -> {error, Error};
         {ok, Results} ->
@@ -106,7 +104,7 @@ handle_call({mget, Keys, Exp, Lock}, _From,
     end,
     {reply, Reply, State};
 handle_call({arithmetic, Key, OffSet, Exp, Create, Initial}, _From,
-            State = #instance{handle = Handle, transcoder = Transcoder}) ->
+            State = #instance{transcoder = Transcoder}) ->
     Reply = case control(op(arithmetic), [Key, OffSet, Exp, Create, Initial], State) of
         {error, Error} -> {error, Error};
         {ok, {Cas, Flag, Value}} ->
@@ -114,13 +112,11 @@ handle_call({arithmetic, Key, OffSet, Exp, Create, Initial}, _From,
             {ok, Cas, DecodedValue}
     end,
     {reply, Reply, State};
-handle_call({remove, Key, N}, _From,
-            State = #instance{handle = Handle}) ->
+handle_call({remove, Key, N}, _From, State) ->
     case control(op(remove), [Key, N], State) of
         Reply -> {reply, Reply, State}
     end;
-handle_call({http, Path, Body, ContentType, Method, Chunked}, _From,
-            State = #instance{handle = Handle}) ->
+handle_call({http, Path, Body, ContentType, Method, Chunked}, _From, State) ->
     case control(op(http), [Path, Body, ContentType, Method, Chunked], State) of
         Reply -> {reply, Reply, State}
     end;
@@ -184,9 +180,9 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
-control(Op, Args, State = #instance{handle = Handle, supports_dirty_schedulers = true}) ->
+control(Op, Args, #instance{handle = Handle, supports_dirty_schedulers = true}) ->
     cberl_nif:control(Handle, Op, Args);
-control(Op, Args, State = #instance{handle = Handle, supports_dirty_schedulers = false}) ->
+control(Op, Args, #instance{handle = Handle, supports_dirty_schedulers = false}) ->
     ok = cberl_nif:control(Handle, Op, Args),
     receive
         R -> R
