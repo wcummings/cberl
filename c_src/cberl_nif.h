@@ -21,6 +21,10 @@ typedef struct task {
     handle_t* handle;
 } task_t;
 
+NIF(cberl_nif_new);
+NIF(cberl_nif_dirty);
+NIF(cberl_nif_control);
+NIF(cberl_nif_destroy);
 ERL_NIF_TERM cberl_dirty_nif_finalizer(ErlNifEnv* env, ERL_NIF_TERM result);
 ERL_NIF_TERM cberl_dirty_nif_badarg_finalizer(ErlNifEnv* env, ERL_NIF_TERM result);
 task_t* get_task(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
