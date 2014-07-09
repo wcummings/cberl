@@ -40,9 +40,9 @@ NIF(cberl_nif_new)
     handle->calltable[CMD_HTTP]            = cb_http;
     handle->args_calltable[CMD_HTTP]       = cb_http_args;
 
+    #ifndef ERL_NIF_DIRTY_SCHEDULER_SUPPORT
     handle->thread_opts = enif_thread_opts_create("thread_opts");
 
-    #ifndef ERL_NIF_DIRTY_SCHEDULER_SUPPORT
     if (enif_thread_create("", &handle->thread, worker, handle, handle->thread_opts) != 0) {
         return enif_make_atom(env, "error");
     }
@@ -92,9 +92,13 @@ NIF(cberl_nif_destroy) {
     void* resp;
     assert_badarg(enif_get_resource(env, argv[0], cberl_handle, (void **) &handle), env);      
     queue_put(handle->queue, NULL); // push NULL into our queue so the thread will join
+    #ifndef ERL_NIF_DIRTY_SCHEDULER_SUPPORT
     enif_thread_join(handle->thread, &resp);
+    #endif
     queue_destroy(handle->queue);
+    #ifndef ERL_NIF_DIRTY_SCHEDULER_SUPPORT
     enif_thread_opts_destroy(handle->thread_opts);
+    #endif
     lcb_destroy(handle->instance);
     enif_release_resource(handle); 
     return A_OK(env);
