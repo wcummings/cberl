@@ -49,11 +49,71 @@ NIF(cberl_nif_new)
     return enif_make_tuple2(env, enif_make_atom(env, "ok"), enif_make_resource(env, handle));
 }
 
+NIF(cberl_nif_dirty)
+{
+    task_t* task = get_task(env, argc, argv);
+
+    if (task == NULL) {
+        return enif_schedule_dirty_nif_finalizer(env, NULL, cberl_dirty_nif_badarg_finalizer);
+    }
+
+    ERL_NIF_TERM result = task->handle->calltable[task->cmd](env, task->handle, task->args);
+
+    return enif_schedule_dirty_nif_finalizer(env, result, cberl_dirty_nif_finalizer);
+}
+
+#ifdef ERL_NIF_DIRTY_SCHEDULER_SUPPORT
+
 NIF(cberl_nif_control)
 {
+    return enif_schedule_dirty_nif(env, ERL_NIF_DIRTY_JOB_IO_BOUND, cberl_nif_dirty, argc, argv);
+}
+
+#else
+
+NIF(cberl_nif_control)
+{
+    task_t* task = get_task(env, argc, argv);
+    if (task == NULL) {
+        return enif_make_badarg(env);
+    }
+
+    queue_put(task->handle->queue, task);
+
+    return A_OK(env);
+}
+
+#endif
+
+NIF(cberl_nif_destroy) {
+    handle_t * handle;
+    void* resp;
+    assert_badarg(enif_get_resource(env, argv[0], cberl_handle, (void **) &handle), env);      
+    queue_put(handle->queue, NULL); // push NULL into our queue so the thread will join
+    enif_thread_join(handle->thread, &resp);
+    queue_destroy(handle->queue);
+    enif_thread_opts_destroy(handle->thread_opts);
+    lcb_destroy(handle->instance);
+    enif_release_resource(handle); 
+    return A_OK(env);
+}
+
+
+ERL_NIF_TERM cberl_dirty_nif_finalizer(ErlNifEnv* env, ERL_NIF_TERM result)
+{
+    return result;
+}
+
+ERL_NIF_TERM cberl_dirty_nif_badarg_finalizer(ErlNifEnv* env, ERL_NIF_TERM result) {
+    return enif_make_badarg(env);
+}
+
+task_t* get_task(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
     handle_t* handle;
 
-    assert_badarg(enif_get_resource(env, argv[0], cberl_handle, (void **) &handle), env);
+    if(!enif_get_resource(env, argv[0], cberl_handle, (void **) &handle)) {
+        return NULL;
+    }
 
     unsigned int len;
     enif_get_atom_length(env, argv[1], &len, ERL_NIF_LATIN1);
@@ -61,7 +121,7 @@ NIF(cberl_nif_control)
     enif_get_int(env, argv[1], &cmd);
 
     if (cmd == -1) {
-        return enif_make_badarg(env);
+        return NULL;
     }
 
     ErlNifPid* pid = (ErlNifPid*)enif_alloc(sizeof(ErlNifPid));
@@ -71,7 +131,7 @@ NIF(cberl_nif_control)
     if (!enif_get_list_length(env, argv[2], &arg_length)) {
         enif_free(pid);
         enif_free(task);
-        return enif_make_badarg(env);
+        return NULL;
     }
 
     ERL_NIF_TERM nargs = argv[2];
@@ -91,7 +151,7 @@ NIF(cberl_nif_control)
     if(args == NULL) {
         enif_free(pid);
         enif_free(task);
-        return enif_make_badarg(env);
+        return NULL;
     }
 
     enif_self(env, pid);
@@ -99,23 +159,9 @@ NIF(cberl_nif_control)
     task->pid  = pid;
     task->cmd  = cmd;
     task->args = args;
+    task->handle = handle;
 
-    queue_put(handle->queue, task);
-
-    return A_OK(env);
-}
-
-NIF(cberl_nif_destroy) {
-    handle_t * handle;
-    void* resp;
-    assert_badarg(enif_get_resource(env, argv[0], cberl_handle, (void **) &handle), env);      
-    queue_put(handle->queue, NULL); // push NULL into our queue so the thread will join
-    enif_thread_join(handle->thread, &resp);
-    queue_destroy(handle->queue);
-    enif_thread_opts_destroy(handle->thread_opts);
-    lcb_destroy(handle->instance);
-    enif_release_resource(handle); 
-    return A_OK(env);
+    return task;
 }
 
 static void* worker(void *obj)

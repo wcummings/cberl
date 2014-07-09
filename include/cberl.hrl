@@ -16,7 +16,8 @@
 -type handle() :: binary().
 
 -record(instance, {handle :: handle(), 
-                   transcoder :: module()}).
+                   transcoder :: module(),
+                   supports_dirty_schedulers :: term()}).
 
 -type key() :: string().
 -type value() :: string() | list() | integer() | binary().

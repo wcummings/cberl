@@ -47,12 +47,16 @@ init([{host, Host}, {username, Username}, {password, Password},
       {bucketname, BucketName}, {transcoder, Transcoder}]) ->
     process_flag(trap_exit, true),
     {ok, Handle} = cberl_nif:new(),
-    ok = cberl_nif:control(Handle, op(connect), [Host, Username, Password, BucketName]),
-    receive
-        ok -> {ok, #instance{handle = Handle, transcoder = Transcoder}};
+    DirtySchedulers = try erlang:system_info(dirty_cpu_schedulers) of
+        _ -> true
+    catch
+        _ -> false
+    end,
+    State = #instance{handle = Handle, transcoder = Transcoder, supports_dirty_schedulers = DirtySchedulers},
+    case control(op(connect), [Host, Username, Password, BucketName], State) of
+        ok -> {ok, State};
         {error, Error} -> {stop, Error}
     end.
-
 
 %%--------------------------------------------------------------------
 %% @private
@@ -70,28 +74,24 @@ init([{host, Host}, {username, Username}, {password, Password},
 %%--------------------------------------------------------------------
 handle_call({mtouch, Keys, ExpTimesE}, _From, 
             State = #instance{handle = Handle}) ->
-    ok = cberl_nif:control(Handle, op(mtouch), [Keys, ExpTimesE]),
-    receive
+    case control(op(mtouch), [Keys, ExpTimesE], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call({unlock, Key, Cas}, _From, 
             State = #instance{handle = Handle}) ->
-    cberl_nif:control(Handle, op(unlock), [Key, Cas]),
-    receive
+    case control(op(unlock), [Key, Cas], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call({store, Op, Key, Value, TranscoderOpts, Exp, Cas}, _From, 
             State = #instance{handle = Handle, transcoder = Transcoder}) ->
     StoreValue = Transcoder:encode_value(TranscoderOpts, Value), 
-    ok = cberl_nif:control(Handle, op(store), [operation_value(Op), Key, StoreValue, 
-                           Transcoder:flag(TranscoderOpts), Exp, Cas]),
-    receive
+    case control(op(store), [operation_value(Op), Key, StoreValue, 
+                 Transcoder:flag(TranscoderOpts), Exp, Cas], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call({mget, Keys, Exp, Lock}, _From, 
             State = #instance{handle = Handle, transcoder = Transcoder}) ->
-    ok = cberl_nif:control(Handle, op(mget), [Keys, Exp, Lock]),
-    Reply = receive
+    Reply = case control(op(mget), [Keys, Exp, Lock], State) of
         {error, Error} -> {error, Error};
         {ok, Results} ->
             lists:map(fun(Result) ->
@@ -107,8 +107,7 @@ handle_call({mget, Keys, Exp, Lock}, _From,
     {reply, Reply, State};
 handle_call({arithmetic, Key, OffSet, Exp, Create, Initial}, _From,
             State = #instance{handle = Handle, transcoder = Transcoder}) ->
-    ok = cberl_nif:control(Handle, op(arithmetic), [Key, OffSet, Exp, Create, Initial]),
-    Reply = receive
+    Reply = case control(op(arithmetic), [Key, OffSet, Exp, Create, Initial], State) of
         {error, Error} -> {error, Error};
         {ok, {Cas, Flag, Value}} ->
             DecodedValue = Transcoder:decode_value(Flag, Value),
@@ -117,14 +116,12 @@ handle_call({arithmetic, Key, OffSet, Exp, Create, Initial}, _From,
     {reply, Reply, State};
 handle_call({remove, Key, N}, _From,
             State = #instance{handle = Handle}) ->
-    ok = cberl_nif:control(Handle, op(remove), [Key, N]),
-    receive
+    case control(op(remove), [Key, N], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call({http, Path, Body, ContentType, Method, Chunked}, _From,
             State = #instance{handle = Handle}) ->
-    ok = cberl_nif:control(Handle, op(http), [Path, Body, ContentType, Method, Chunked]),
-    receive
+    case control(op(http), [Path, Body, ContentType, Method, Chunked], State) of
         Reply -> {reply, Reply, State}
     end;
 handle_call(_Request, _From, State) ->
@@ -186,6 +183,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+control(Op, Args, State = #instance{handle = Handle, supports_dirty_schedulers = true}) ->
+    cberl_nif:control(Handle, Op, Args);
+control(Op, Args, State = #instance{handle = Handle, supports_dirty_schedulers = false}) ->
+    ok = cberl_nif:control(Handle, Op, Args),
+    receive
+        R -> R
+    end.
 
 -spec operation_value(operation_type()) -> integer().
 operation_value(add) -> ?'CBE_ADD';

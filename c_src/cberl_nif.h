@@ -18,8 +18,13 @@ typedef struct task {
     ErlNifPid* pid;
     unsigned int cmd;
     void *args;
+    handle_t* handle;
+    unsigned int badarg;
 } task_t;
 
+ERL_NIF_TERM cberl_dirty_nif_finalizer(ErlNifEnv* env, ERL_NIF_TERM result);
+ERL_NIF_TERM cberl_dirty_nif_badarg_finalizer(ErlNifEnv* env, ERL_NIF_TERM result);
+task_t* get_task(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 static void* worker(void *obj);
 
 #endif
