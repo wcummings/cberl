@@ -19,7 +19,6 @@ typedef struct task {
     unsigned int cmd;
     void *args;
     handle_t* handle;
-    unsigned int badarg;
 } task_t;
 
 ERL_NIF_TERM cberl_dirty_nif_finalizer(ErlNifEnv* env, ERL_NIF_TERM result);
