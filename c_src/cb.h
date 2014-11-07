@@ -30,6 +30,14 @@ typedef struct mget_args {
     int lock;
 } mget_args_t;
 
+typedef struct mget_replica_args {
+    unsigned int numkeys;
+    void** keys;
+    size_t* nkeys;
+    int strategy;
+    int index;
+} mget_replica_args_t;
+
 typedef struct unlock_args {
     void * key;
     unsigned int nkey;
