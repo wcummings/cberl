@@ -90,6 +90,8 @@ void* cb_remove_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM cb_remove(ErlNifEnv* env, handle_t* handle, void* obj);
 void* cb_http_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
 ERL_NIF_TERM cb_http(ErlNifEnv* env, handle_t* handle, void* obj);
+void* cb_mget_replica_args(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]);
+ERL_NIF_TERM cb_mget_replica(ErlNifEnv* env, handle_t* handle, void* obj);
 
 ERL_NIF_TERM return_lcb_error(ErlNifEnv* env, int const value);
 ERL_NIF_TERM return_value(ErlNifEnv* env, void * cookie);
