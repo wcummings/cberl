@@ -241,7 +241,7 @@ ERL_NIF_TERM cb_mget_replica(ErlNifEnv* env, handle_t* handle, void* obj) {
     unsigned int numkeys = args->numkeys;
     void** keys = args->keys;
     size_t* nkeys = args->nkeys;
-    int strategy = args->strategy;
+    int strategy = translate_strategy(args->strategy);
     int index = args->index;
     int i = 0;
 
@@ -255,7 +255,11 @@ ERL_NIF_TERM cb_mget_replica(ErlNifEnv* env, handle_t* handle, void* obj) {
         get->version = 1;
         get->v.v1.key = keys[i];
         get->v.v1.nkey = nkeys[i];
-        get->v.v1.index = index;
+        get->v.v1.strategy = strategy;
+        // index is only specified for LCB_REPLICA_SELECT
+        if (strategy != LCB_REPLICA_SELECT) {
+            get->v.v1.index = index;
+        }
         commands[i] = get;
     }
 
@@ -841,4 +845,14 @@ ERL_NIF_TERM return_value(ErlNifEnv* env, void * cookie) {
                                            enif_make_binary(env, &value_binary));
     free(cb->data);
     return term;
+}
+
+// translate our enum into the lcb enum
+lcb_replica_t translate_strategy(int n) {
+    switch(n) {
+        case 0: return LCB_REPLICA_FIRST;
+        case 1: return LCB_REPLICA_ALL;
+        case 2: return LCB_REPLICA_SELECT;
+        default: return NULL;
+    }
 }

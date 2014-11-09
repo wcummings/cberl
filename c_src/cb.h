@@ -93,5 +93,6 @@ ERL_NIF_TERM cb_http(ErlNifEnv* env, handle_t* handle, void* obj);
 
 ERL_NIF_TERM return_lcb_error(ErlNifEnv* env, int const value);
 ERL_NIF_TERM return_value(ErlNifEnv* env, void * cookie);
+lcb_replica_t translate_strategy(int n);
 
 #endif
