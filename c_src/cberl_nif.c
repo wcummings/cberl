@@ -28,22 +28,24 @@ NIF(cberl_nif_new)
     handle_t* handle = enif_alloc_resource(cberl_handle, sizeof(handle_t));
     handle->queue = queue_new();
 
-    handle->calltable[CMD_CONNECT]         = cb_connect;
-    handle->args_calltable[CMD_CONNECT]    = cb_connect_args;
-    handle->calltable[CMD_STORE]           = cb_store;
-    handle->args_calltable[CMD_STORE]      = cb_store_args;
-    handle->calltable[CMD_MGET]            = cb_mget;
-    handle->args_calltable[CMD_MGET]       = cb_mget_args;
-    handle->calltable[CMD_UNLOCK]          = cb_unlock;
-    handle->args_calltable[CMD_UNLOCK]     = cb_unlock_args;
-    handle->calltable[CMD_MTOUCH]          = cb_mtouch;
-    handle->args_calltable[CMD_MTOUCH]     = cb_mtouch_args;
-    handle->calltable[CMD_ARITHMETIC]      = cb_arithmetic;
-    handle->args_calltable[CMD_ARITHMETIC] = cb_arithmetic_args;
-    handle->calltable[CMD_REMOVE]          = cb_remove;
-    handle->args_calltable[CMD_REMOVE]     = cb_remove_args;
-    handle->calltable[CMD_HTTP]            = cb_http;
-    handle->args_calltable[CMD_HTTP]       = cb_http_args;
+    handle->calltable[CMD_CONNECT]           = cb_connect;
+    handle->args_calltable[CMD_CONNECT]      = cb_connect_args;
+    handle->calltable[CMD_STORE]             = cb_store;
+    handle->args_calltable[CMD_STORE]        = cb_store_args;
+    handle->calltable[CMD_MGET]              = cb_mget;
+    handle->args_calltable[CMD_MGET]         = cb_mget_args;
+    handle->calltable[CMD_UNLOCK]            = cb_unlock;
+    handle->args_calltable[CMD_UNLOCK]       = cb_unlock_args;
+    handle->calltable[CMD_MTOUCH]            = cb_mtouch;
+    handle->args_calltable[CMD_MTOUCH]       = cb_mtouch_args;
+    handle->calltable[CMD_ARITHMETIC]        = cb_arithmetic;
+    handle->args_calltable[CMD_ARITHMETIC]   = cb_arithmetic_args;
+    handle->calltable[CMD_REMOVE]            = cb_remove;
+    handle->args_calltable[CMD_REMOVE]       = cb_remove_args;
+    handle->calltable[CMD_HTTP]              = cb_http;
+    handle->args_calltable[CMD_HTTP]         = cb_http_args;
+    handle->calltable[CMD_MGET_REPLICA]      = cb_mget_replica;
+    handle->args_calltable[CMD_MGET_REPLICA] = cb_mget_replica_args;
 
     handle->thread_opts = enif_thread_opts_create("thread_opts");
 

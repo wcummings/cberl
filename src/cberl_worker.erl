@@ -114,6 +114,12 @@ handle_call({http, Path, Body, ContentType, Method, Chunked}, _From, State) ->
         {error, _} = E -> {false, E}
     end,
     {reply, Reply, State#instance{connected = Connected}};
+handle_call({mget_replica, Keys, Strategy, Index}, _From, State) ->
+    {Connected, Reply} = case connect(State) of
+        ok -> {true, mget_replica(Keys, Strategy, Index, State)};
+        {error, _} = E -> {false, E}
+    end,
+    {reply, Reply, State#instance{connected = Connected}};
 handle_call(bucketname, _From, State = #instance{bucketname = BucketName}) ->
     {reply, {ok, BucketName}, State};
 handle_call(_Request, _From, State) ->
@@ -222,6 +228,22 @@ mget(Keys, Exp, Lock, #instance{handle = Handle, transcoder = Transcoder}) ->
                 end, Results)
     end.
 
+mget_replica(Keys, Strategy, Index, #instance{handle = Handle, transcoder = Transcoder}) ->
+    ok = cberl_nif:control(Handle, op(mget_replica), [Keys, Strategy, Index]),
+    receive
+        {error, Error} -> {error, Error};
+        {ok, Results} ->
+            lists:map(fun(Result) ->
+                        case Result of
+                            {Cas, Flag, Key, Value} ->
+                                DecodedValue = Transcoder:decode_value(Flag, Value),
+                                {Key, Cas, DecodedValue};
+                            {_Key, {error, _Error}} ->
+                                Result
+                        end
+                end, Results)
+    end.
+
 arithmetic(Key, OffSet, Exp, Create, Initial,
            #instance{handle = Handle, transcoder = Transcoder}) ->
     ok = cberl_nif:control(Handle, op(arithmetic), [Key, OffSet, Exp, Create, Initial]),
@@ -259,7 +281,8 @@ op(unlock) -> ?'CMD_UNLOCK';
 op(mtouch) -> ?'CMD_MTOUCH';
 op(arithmetic) -> ?'CMD_ARITHMETIC';
 op(remove) -> ?'CMD_REMOVE';
-op(http) -> ?'CMD_HTTP'.
+op(http) -> ?'CMD_HTTP';
+op(mget_replica) -> ?'CMD_MGET_REPLICA'.
 
 -spec canonical_bucket_name(string()) -> string().
 canonical_bucket_name(Name) ->

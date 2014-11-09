@@ -12,6 +12,7 @@
 -define('CMD_ARITHMETIC', 5).
 -define('CMD_REMOVE',     6).
 -define('CMD_HTTP',       7).
+-define('CMD_MGET_REPLICA', 8).
 
 -type handle() :: binary().
 
@@ -27,3 +28,4 @@
 -type instance() :: #instance{}.
 -type http_type() :: view | management | raw.
 -type http_method() :: get | post | put | delete.
+-type strategy() :: first | all | select.

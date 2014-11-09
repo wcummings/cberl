@@ -16,7 +16,8 @@
 -export([arithmetic/6]).
 %retrieval operations
 -export([get_and_touch/3, get_and_lock/3, mget/2, get/2, unlock/3,
-         mget/3, getl/3, http/6, view/4, foldl/3, foldr/3, foreach/2]).
+         mget/3, getl/3, http/6, view/4, foldl/3, foldr/3, foreach/2,
+         get_replica/3, mget_replica/3, get_replica/4, mget_replica/4]).
 %remove
 -export([remove/2, flush/1, flush/2]).
 %design doc opertations
@@ -168,7 +169,10 @@ mget(PoolPid, Keys) ->
 
 -spec get_and_lock(pid(), key(), integer()) -> {ok, integer(), value()} | {error, _}.
 get_and_lock(PoolPid, Key, Exp) ->
-    hd(getl(PoolPid, Key, Exp)).
+    case getl(PoolPid, Key, Exp) of
+        {error, _} = E -> E;
+        Result -> hd(Result)
+    end.
 
 -spec unlock(pid(), key(), integer()) -> ok | {error, _}.
 unlock(PoolPid, Key, Cas) ->
@@ -277,6 +281,23 @@ handle_flush_result(PoolPid, FlushMarker, Result={ok, 201, _}) ->
 http(PoolPid, Path, Body, ContentType, Method, Type) ->
     execute(PoolPid, {http, Path, Body, ContentType, http_method(Method), http_type(Type)}).
 
+-spec get_replica(pid(), key(), strategy(), integer()) -> {ok, integer(), value()} | {error, _}.
+get_replica(PoolPid, Key, Strategy) when Strategy =/= select ->
+    get_replica(PoolPid, Key, Strategy, 0).
+
+get_replica(PoolPid, Key, Strategy, Index) ->
+    case execute(PoolPid, {mget_replica, [Key], strategy(Strategy), Index}) of
+        {error, _} = E -> E;
+        Result -> hd(Result)
+    end.
+
+-spec mget_replica(pid(), [key()], strategy(), integer()) -> list().
+mget_replica(PoolPid, Keys, Strategy) when Strategy =/= select ->
+    mget_replica(PoolPid, Keys, Strategy, 0).
+
+mget_replica(PoolPid, Keys, Strategy, Index) ->
+    execute(PoolPid, {mget_replica, Keys, strategy(Strategy), Index}).
+
 %% @doc Query a view
 %% PoolPid pid of connection pool
 %% DocName design doc name
@@ -329,6 +350,10 @@ http_method(get) -> 0;
 http_method(post) -> 1;
 http_method(put) -> 2;
 http_method(delete) -> 3.
+
+strategy(first) -> 0;
+strategy(all) -> 1;
+strategy(select) -> 2.
 
 query_args(Args) when is_list(Args) ->
     string:join([query_arg(A) || A <- Args], "&").
