@@ -48,16 +48,15 @@ start_link(PoolName, NumCon, Host, Username, Password) ->
 %% Password The password
 %% bucket The bucket to connect to
 %% @end
-%% @equiv start_link(PoolName, NumCon, Host, Username, Password, cberl_transcoder)
+%% @equiv start_link(PoolName, NumCon, Host, Username, Password, BucketName, cberl_transcoder)
 start_link(PoolName, NumCon, Host, Username, Password, BucketName) ->
-    start_link(PoolName, NumCon, Host, Username, Password, BucketName, "", cberl_transcoder).
+    start_link(PoolName, NumCon, Host, Username, Password, BucketName, cberl_transcoder, "").
 
-start_link(PoolName, NumCon, Host, Username, Password, BucketName, Certificate) ->
-    start_link(PoolName, NumCon, Host, Username, Password, BucketName, Certificate, cberl_transcoder).
+start_link(PoolName, NumCon, Host, Username, Password, BucketName, Transcoder) ->
+    start_link(PoolName, NumCon, Host, Username, Password, BucketName, Transcoder, "").
 
-
--spec start_link(atom(), integer(), string(), string(), string(), string(), string(), atom()) -> {ok, pid()} | {error, _}.
-start_link(PoolName, NumCon, Host, Username, Password, BucketName, Certificate, Transcoder) ->
+-spec start_link(atom(), integer(), string(), string(), string(), string(), atom(), string()) -> {ok, pid()} | {error, _}.
+start_link(PoolName, NumCon, Host, Username, Password, BucketName, Transcoder, Certificate) ->
     SizeArgs = [{size, NumCon},
                 {max_overflow, 0}],
     PoolArgs = [{name, {local, PoolName}},
